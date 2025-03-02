@@ -150,6 +150,15 @@ root.title("FemPEG: FLAC to ALAC Converter")
 root.geometry("900x600")
 root.configure(bg=BG_COLOR)
 
+# Menu Bar
+menu_bar = tk.Menu(root)
+file_menu = tk.Menu(menu_bar, tearoff=0)
+file_menu.add_command(label="Select FLAC Folder", command=browse_folder)
+file_menu.add_separator()
+file_menu.add_command(label="Exit", command=root.quit)
+menu_bar.add_cascade(label="Bulk Convert", menu=file_menu)
+root.config(menu=menu_bar)
+
 # Application icon
 image = Image.open("fempfp.jpg") 
 img = ImageTk.PhotoImage(image)
