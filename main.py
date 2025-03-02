@@ -19,7 +19,7 @@ TEXT_COLOR = "#333333"
 ENTRY_COLOR = "#ffffff"
 
 # Placeholder image path (use a default image if no artwork is found)
-PLACEHOLDER_IMAGE = "placeholder.jpg"
+PLACEHOLDER_IMAGE = "fempfp.jpg"  # Replace with your placeholder image path
 
 def set_ffmpeg_path():
     global FFMPEG_PATH
@@ -102,6 +102,7 @@ def browse_file():
     if file_path:
         input_var.set(file_path)
         display_artwork(file_path)
+        update_music_title(file_path)
 
 def browse_folder():
     folder_path = filedialog.askdirectory()
@@ -135,10 +136,18 @@ def display_artwork(file_path):
     except Exception as e:
         messagebox.showerror("Error", f"Failed to load artwork: {str(e)}")
 
+def update_music_title(file_path):
+    try:
+        flac = FLAC(file_path)
+        title = flac.tags.get("title", [os.path.basename(file_path)])[0]
+        music_title_var.set(title)
+    except Exception as e:
+        music_title_var.set("Unknown Title")
+
 # GUI Setup
 root = tk.Tk()
 root.title("FemPEG: FLAC to ALAC Converter")
-root.geometry("900x500")
+root.geometry("900x600")
 root.configure(bg=BG_COLOR)
 
 # Application icon
@@ -146,25 +155,24 @@ image = Image.open("fempfp.jpg")
 img = ImageTk.PhotoImage(image)
 root.iconphoto(False, img)
 
-# Menu Bar
-menu_bar = tk.Menu(root)
-file_menu = tk.Menu(menu_bar, tearoff=0)
-file_menu.add_command(label="Select FLAC Folder", command=browse_folder)
-file_menu.add_separator()
-file_menu.add_command(label="Exit", command=root.quit)
-menu_bar.add_cascade(label="Bulk Convert", menu=file_menu)
-root.config(menu=menu_bar)
-
 # Main Frame
 main_frame = ttk.Frame(root, padding="20")
 main_frame.pack(fill=tk.BOTH, expand=True)
 
-# Left Frame (Input Fields)
-left_frame = ttk.Frame(main_frame)
-left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10, pady=10)
+# Row A
+row_a = ttk.Frame(main_frame)
+row_a.pack(fill=tk.BOTH, expand=True)
 
-# Input File Section
-input_frame = ttk.Frame(left_frame)
+# Row X
+row_x = ttk.Frame(row_a)
+row_x.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+# Column A (Input Fields)
+column_a = ttk.Frame(row_x)
+column_a.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+# Select a FLAC file
+input_frame = ttk.Frame(column_a)
 input_frame.pack(fill=tk.X, pady=5)
 
 ttk.Label(input_frame, text="Select a FLAC file:").grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
@@ -173,8 +181,8 @@ input_entry = ttk.Entry(input_frame, textvariable=input_var, width=40)
 input_entry.grid(row=0, column=1, padx=5, pady=5)
 ttk.Button(input_frame, text="Browse", command=browse_file).grid(row=0, column=2, padx=5, pady=5)
 
-# Output File Section
-output_frame = ttk.Frame(left_frame)
+# Output file
+output_frame = ttk.Frame(column_a)
 output_frame.pack(fill=tk.X, pady=5)
 
 ttk.Label(output_frame, text="Output File:").grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
@@ -182,8 +190,8 @@ output_var = tk.StringVar()
 output_entry = ttk.Entry(output_frame, textvariable=output_var, width=40, state="readonly")
 output_entry.grid(row=0, column=1, padx=5, pady=5)
 
-# FFmpeg Path Section
-ffmpeg_frame = ttk.Frame(left_frame)
+# FFMPEG Path
+ffmpeg_frame = ttk.Frame(column_a)
 ffmpeg_frame.pack(fill=tk.X, pady=5)
 
 ttk.Label(ffmpeg_frame, text="FFmpeg Path:").grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
@@ -192,29 +200,42 @@ ffmpeg_entry = ttk.Entry(ffmpeg_frame, textvariable=ffmpeg_path_var, width=40, s
 ffmpeg_entry.grid(row=0, column=1, padx=5, pady=5)
 ttk.Button(ffmpeg_frame, text="Set Path", command=set_ffmpeg_path).grid(row=0, column=2, padx=5, pady=5)
 
+# Column B (Artwork and Music Title)
+column_b = ttk.Frame(row_x)
+column_b.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+# Artwork Display (Placeholder Image)
+placeholder_image = Image.open(PLACEHOLDER_IMAGE)
+placeholder_image = placeholder_image.resize((150, 150), Image.LANCZOS)
+placeholder_img = ImageTk.PhotoImage(placeholder_image)
+artwork_label = ttk.Label(column_b, image=placeholder_img)
+artwork_label.image = placeholder_img  # Keep a reference to avoid garbage collection
+artwork_label.pack(pady=10)
+
+# Music Title
+music_title_var = tk.StringVar(value="Music Title")
+music_title_label = ttk.Label(column_b, textvariable=music_title_var, font=("Helvetica", 12, "bold"))
+music_title_label.pack(pady=10)
+
+# Row Y
+row_y = ttk.Frame(main_frame)
+row_y.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
+
 # Progress Bar
-progress_bar = ttk.Progressbar(left_frame, orient=tk.HORIZONTAL, mode="indeterminate")
+progress_bar = ttk.Progressbar(row_a, orient=tk.HORIZONTAL, mode="indeterminate")
 progress_bar.pack(fill=tk.X, pady=10)
 
 # Convert Button
-convert_button = ttk.Button(left_frame, text="Convert", command=convert_to_m4a, style="Accent.TButton")
+convert_button = ttk.Button(row_y, text="Convert", command=convert_to_m4a, style="Accent.TButton")
 convert_button.pack(pady=10)
 
-# Log Text Area
-log_text = ScrolledText(left_frame, height=8, width=50, wrap=tk.WORD, bg=ENTRY_COLOR, fg=TEXT_COLOR)
+# Console (Log Text Area)
+log_text = ScrolledText(row_y, height=8, width=80, wrap=tk.WORD, bg=ENTRY_COLOR, fg=TEXT_COLOR)
 log_text.pack(fill=tk.BOTH, expand=True, pady=10)
 
 # Exit Button
-exit_button = ttk.Button(left_frame, text="Exit", command=root.quit)
+exit_button = ttk.Button(row_y, text="Exit", command=root.quit)
 exit_button.pack(pady=10)
-
-# Right Frame (Image Display)
-right_frame = ttk.Frame(main_frame)
-right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=10, pady=10)
-
-# Artwork Display
-artwork_label = ttk.Label(right_frame)
-artwork_label.pack(pady=10)
 
 # Style Configuration
 style = ttk.Style()
