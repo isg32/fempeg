@@ -6,6 +6,7 @@ from PIL import Image, ImageTk  # For image support
 import ffmpeg
 from tinytag import TinyTag
 from mutagen.flac import FLAC  # For extracting artwork from FLAC files
+from mutagen.mp4 import MP4, MP4Cover  # For embedding artwork into M4A files
 
 # Default path to ffmpeg.exe
 FFMPEG_PATH = "./bin/ffmpeg.exe"
@@ -36,7 +37,7 @@ def get_audio_bitrate(input_file):
         messagebox.showerror("Error", f"Could not retrieve bitrate: {str(e)}")
         return "320000"
 
-def convert_to_mp3():
+def convert_to_m4a():
     input_file = input_var.get()
     if not input_file:
         messagebox.showerror("Error", "Please select a FLAC file.")
@@ -51,12 +52,16 @@ def convert_to_mp3():
         # Start progress bar
         progress_bar.start()
 
+        # Convert FLAC to M4A using ffmpeg
         (
             ffmpeg
             .input(input_file)
             .output(output_file, acodec="alac", map="0:a", f="mp4", ab=bitrate, map_metadata=0, vf="scale=300:-1")
             .run(overwrite_output=True)
         )
+
+        # Embed artwork into the M4A file
+        embed_artwork(input_file, output_file)
 
         log_text.insert(tk.END, "Conversion completed successfully!\n")
         messagebox.showinfo("Success", f"Conversion completed: {output_file}")
@@ -66,6 +71,31 @@ def convert_to_mp3():
     finally:
         # Stop progress bar
         progress_bar.stop()
+
+def embed_artwork(input_file, output_file):
+    try:
+        # Extract artwork from FLAC file
+        flac = FLAC(input_file)
+        if flac.pictures:
+            artwork_data = flac.pictures[0].data
+            artwork_path = "temp_artwork.jpg"
+            with open(artwork_path, "wb") as img_file:
+                img_file.write(artwork_data)
+        else:
+            artwork_path = PLACEHOLDER_IMAGE
+
+        # Load the artwork image
+        with open(artwork_path, "rb") as img_file:
+            artwork = img_file.read()
+
+        # Embed artwork into the M4A file using mutagen.mp4
+        m4a = MP4(output_file)
+        m4a.tags["covr"] = [MP4Cover(artwork, MP4Cover.FORMAT_JPEG)]  # Use FORMAT_PNG for PNG images
+        m4a.save()
+
+        log_text.insert(tk.END, "Artwork embedded successfully!\n")
+    except Exception as e:
+        log_text.insert(tk.END, f"Error embedding artwork: {str(e)}\n")
 
 def browse_file():
     file_path = filedialog.askopenfilename(filetypes=[("FLAC files", "*.flac")])
@@ -80,7 +110,7 @@ def browse_folder():
         if flac_files:
             for file in flac_files:
                 input_var.set(file)
-                convert_to_mp3()
+                convert_to_m4a()
         else:
             messagebox.showerror("Error", "No FLAC files found in the selected folder.")
 
@@ -167,7 +197,7 @@ progress_bar = ttk.Progressbar(left_frame, orient=tk.HORIZONTAL, mode="indetermi
 progress_bar.pack(fill=tk.X, pady=10)
 
 # Convert Button
-convert_button = ttk.Button(left_frame, text="Convert", command=convert_to_mp3, style="Accent.TButton")
+convert_button = ttk.Button(left_frame, text="Convert", command=convert_to_m4a, style="Accent.TButton")
 convert_button.pack(pady=10)
 
 # Log Text Area
